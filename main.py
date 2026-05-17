@@ -16,6 +16,8 @@ def main():
 
     parser = argparse.ArgumentParser(description="Chatbot")
     parser.add_argument("user_prompt", type=str, help="User prompt")
+    parser.add_argument("--verbose", action="store_true",
+                        help="Enable verbose output")
     args = parser.parse_args()
 
     messages = [types.Content(
@@ -29,8 +31,10 @@ def main():
     if res.usage_metadata is None:
         raise RuntimeError("API request failed: invalid response.")
 
-    print("Prompt tokens:", res.usage_metadata.prompt_token_count)
-    print("Response tokens: ", res.usage_metadata.candidates_token_count)
+    if args.verbose:
+        print("User prompt:", args.user_prompt)
+        print("Prompt tokens:", res.usage_metadata.prompt_token_count)
+        print("Response tokens: ", res.usage_metadata.candidates_token_count)
 
     print(res.text)
 
