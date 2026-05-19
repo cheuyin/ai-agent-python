@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import argparse
+from functions.get_files_info import schema_get_files_info
 
 
 def main():
@@ -20,12 +21,28 @@ def main():
                         help="Enable verbose output")
     args = parser.parse_args()
 
+    system_prompt = """
+    You are a helpful AI coding agent.
+
+    When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+
+    - List files and directories
+
+    All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+    """
+
     messages = [types.Content(
         role="user", parts=[types.Part(text=args.user_prompt)])]
 
+    available_functions = types.Tool(
+        function_declarations=[schema_get_files_info],
+    )
+
     res = client.models.generate_content(
         model="gemini-3.1-flash-lite",
-        contents=messages
+        contents=messages,
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=system_prompt)
     )
 
     if res.usage_metadata is None:
@@ -37,6 +54,10 @@ def main():
         print("Response tokens: ", res.usage_metadata.candidates_token_count)
 
     print(res.text)
+
+    if res.function_calls:
+        for fc in res.function_calls:
+            print(f"Calling function: {fc.name}({fc.args})")
 
 
 if __name__ == "__main__":
