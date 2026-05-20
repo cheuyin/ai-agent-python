@@ -1,4 +1,5 @@
 from google.genai import types
+from config import WORKING_DIR
 
 from functions.get_files_info import schema_get_files_info, get_files_info
 from functions.get_file_content import get_file_content, schema_get_file_content
@@ -21,6 +22,12 @@ function_map: dict[str, Callable[..., str]] = {
 
 
 def call_function(function_call: types.FunctionCall, verbose: bool = False) -> types.Content:
+    if verbose:
+        print(
+            f" - Calling function: {function_call.name}({function_call.args})")
+    else:
+        print(f" - Calling function: {function_call.name}")
+
     function_name = function_call.name or ""
 
     if function_name not in function_map:
@@ -35,14 +42,9 @@ def call_function(function_call: types.FunctionCall, verbose: bool = False) -> t
         )
 
     args = dict(function_call.args) if function_call.args else {}
-    args["working_directory"] = "./calculator"
+    args["working_directory"] = WORKING_DIR
 
     function_result = function_map[function_name](**args)
-
-    if verbose:
-        print(f"Calling function: {function_name}({function_call.args})")
-    else:
-        print(f" - Calling function: {function_name}")
 
     return types.Content(
         role="tool",

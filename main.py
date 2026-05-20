@@ -54,24 +54,25 @@ def main():
         print("Prompt tokens:", res.usage_metadata.prompt_token_count)
         print("Response tokens: ", res.usage_metadata.candidates_token_count)
 
-    function_results = []
+    function_responses: list[types.Part] = []
 
     if res.function_calls:
         for fc in res.function_calls:
-            print(f"Calling function: {fc.name}({fc.args})")
-            function_call_result = call_function(fc, False)
-            if not function_call_result.parts:
+            result = call_function(fc, args.verbose)
+
+            if (
+                not result.parts
+                or not result.parts[0].function_response
+                or not result.parts[0].function_response.response
+            ):
                 raise RuntimeError(
-                    "Expected .parts list in call_function but not found")
-            if not isinstance(function_call_result.parts[0].function_response, types.FunctionResponse):
-                raise RuntimeError(
-                    "Response doesn't contain necessary information")
-            if not function_call_result.parts[0].function_response.response:
-                raise RuntimeError("Missing actual function result")
-            function_results.append(function_call_result.parts[0])
+                    f"Empty function response for {fc.name}")
+
+            function_responses.append(result.parts[0])
+
             if args.verbose:
                 print(
-                    f"-> {function_call_result.parts[0].function_response.response}")
+                    f"-> {result.parts[0].function_response.response}")
 
 
 if __name__ == "__main__":
