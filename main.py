@@ -4,6 +4,7 @@ from google import genai
 from google.genai import types
 import argparse
 from call_function import available_functions, call_function
+from config import MAX_ITERS, SYSTEM_PROMPT
 
 
 def main():
@@ -21,42 +22,36 @@ def main():
                         help="Enable verbose output")
     args = parser.parse_args()
 
-    system_prompt = """
-    You are a helpful AI coding agent.
-
-    When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
-
-    - List files and directories
-    - Read file contents
-    - Execute Python files with optional arguments
-    - Write or overwrite files
-
-    All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
-
-    If the user explicitly mentions a file "e.g. tests.py" assume it is relative to the working directory, so if they're asking you to run tests.py, you don't need to go looking for the file.
-    """
-
     messages = [types.Content(
         role="user", parts=[types.Part(text=args.user_prompt)])]
 
-    res = client.models.generate_content(
-        model="gemini-3.1-flash-lite",
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=system_prompt)
-    )
+    for _ in range(MAX_ITERS):
+        res = client.models.generate_content(
+            model="gemini-3.1-flash-lite",
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=SYSTEM_PROMPT)
+        )
 
-    if res.usage_metadata is None:
-        raise RuntimeError("API request failed: invalid response.")
+        if res.candidates:
+            for candidate in res.candidates:
+                if candidate.content:
+                    messages.append(candidate.content)
 
-    if args.verbose:
-        print("User prompt:", args.user_prompt)
-        print("Prompt tokens:", res.usage_metadata.prompt_token_count)
-        print("Response tokens: ", res.usage_metadata.candidates_token_count)
+        if res.usage_metadata is None:
+            raise RuntimeError("API request failed: invalid response.")
 
-    function_responses: list[types.Part] = []
+        if args.verbose:
+            print("User prompt:", args.user_prompt)
+            print("Prompt tokens:", res.usage_metadata.prompt_token_count)
+            print("Response tokens: ", res.usage_metadata.candidates_token_count)
 
-    if res.function_calls:
+        if not res.function_calls:
+            print(res.text)
+            break
+
+        function_responses: list[types.Part] = []
+
         for fc in res.function_calls:
             result = call_function(fc, args.verbose)
 
@@ -73,6 +68,11 @@ def main():
             if args.verbose:
                 print(
                     f"-> {result.parts[0].function_response.response}")
+
+        messages.append(types.Content(role="tool", parts=function_responses))
+    else:
+        print("Maximum number of back-and-forths reached. Exiting program.")
+        exit(1)
 
 
 if __name__ == "__main__":
