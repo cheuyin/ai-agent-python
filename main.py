@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import argparse
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 
 def main():
@@ -33,7 +33,7 @@ def main():
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 
-    main.py is located in the root of the working directory.
+    If the user explicitly mentions a file "e.g. tests.py" assume it is relative to the working directory, so if they're asking you to run tests.py, you don't need to go looking for the file.
     """
 
     messages = [types.Content(
@@ -54,11 +54,24 @@ def main():
         print("Prompt tokens:", res.usage_metadata.prompt_token_count)
         print("Response tokens: ", res.usage_metadata.candidates_token_count)
 
-    print(res.text)
+    function_results = []
 
     if res.function_calls:
         for fc in res.function_calls:
             print(f"Calling function: {fc.name}({fc.args})")
+            function_call_result = call_function(fc, False)
+            if not function_call_result.parts:
+                raise RuntimeError(
+                    "Expected .parts list in call_function but not found")
+            if not isinstance(function_call_result.parts[0].function_response, types.FunctionResponse):
+                raise RuntimeError(
+                    "Response doesn't contain necessary information")
+            if not function_call_result.parts[0].function_response.response:
+                raise RuntimeError("Missing actual function result")
+            function_results.append(function_call_result.parts[0])
+            if args.verbose:
+                print(
+                    f"-> {function_call_result.parts[0].function_response.response}")
 
 
 if __name__ == "__main__":
