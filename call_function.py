@@ -1,10 +1,10 @@
 from google.genai import types
 from config import WORKING_DIR
 
-from functions.get_files_info import schema_get_files_info, get_files_info
-from functions.get_file_content import get_file_content, schema_get_file_content
-from functions.run_python_file import schema_run_python_file, run_python_file
-from functions.write_file import schema_write_file, write_file
+from tools.get_files_info import schema_get_files_info, get_files_info
+from tools.get_file_content import get_file_content, schema_get_file_content
+from tools.run_python_file import schema_run_python_file, run_python_file
+from tools.write_file import schema_write_file, write_file
 
 from collections.abc import Callable
 

@@ -1,6 +1,6 @@
 MODEL = "gemini-3.1-flash-lite"
 MAX_CHARS = 10000
-WORKING_DIR = "./calculator"
+WORKING_DIR = "./sandbox/calculator"
 MAX_ITERS = 20
 SYSTEM_PROMPT = """
 You are a helpful AI coding agent.
