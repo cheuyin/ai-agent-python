@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 import argparse
 from call_function import available_functions, call_function
-from config import MAX_ITERS, SYSTEM_PROMPT, MODEL
+from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL
 
 
 def main():
@@ -31,7 +31,7 @@ def main():
             contents=messages,
             config=types.GenerateContentConfig(
                 tools=[
-                    available_functions], system_instruction=SYSTEM_PROMPT, thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.MEDIUM))
+                    available_functions], system_instruction=SYSTEM_PROMPT, thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL))
         )
 
         if res.candidates:
