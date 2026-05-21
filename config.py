@@ -1,6 +1,6 @@
 from google.genai import types
 
-MODEL = "gemini-3.5-flash"
+MODEL = "gemini-3.1-flash-lite"
 THINKING_LEVEL = types.ThinkingLevel.MEDIUM
 MAX_CHARS = 10000
 WORKING_DIR = "./sandbox/calculator"

@@ -31,7 +31,7 @@ def main():
             contents=messages,
             config=types.GenerateContentConfig(
                 tools=[
-                    available_functions], system_instruction=SYSTEM_PROMPT, thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL))
+                    available_functions], system_instruction=SYSTEM_PROMPT, thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL) if THINKING_LEVEL else None)
         )
 
         if res.candidates:
