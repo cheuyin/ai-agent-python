@@ -3,7 +3,7 @@ from google.genai import types
 
 schema_write_file = types.FunctionDeclaration(
     name="write_file",
-    description="Write contents to the specified file within the working directory (overwriting it if the file exists)",
+    description="Write contents to the specified file within the working directory (overwriting it if the file exists). NOTE: This function will create the directories in its path if they don't already exist.",
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
