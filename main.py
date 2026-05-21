@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 import argparse
 from call_function import available_functions, call_function
-from config import MAX_ITERS, SYSTEM_PROMPT
+from config import MAX_ITERS, SYSTEM_PROMPT, MODEL
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
 
     for _ in range(MAX_ITERS):
         res = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
+            model=MODEL,
             contents=messages,
             config=types.GenerateContentConfig(
                 tools=[available_functions], system_instruction=SYSTEM_PROMPT)
