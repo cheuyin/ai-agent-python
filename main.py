@@ -30,7 +30,8 @@ def main():
             model=MODEL,
             contents=messages,
             config=types.GenerateContentConfig(
-                tools=[available_functions], system_instruction=SYSTEM_PROMPT)
+                tools=[
+                    available_functions], system_instruction=SYSTEM_PROMPT, thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.MEDIUM))
         )
 
         if res.candidates:
