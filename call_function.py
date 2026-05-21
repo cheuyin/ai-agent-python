@@ -5,19 +5,21 @@ from tools.get_files_info import schema_get_files_info, get_files_info
 from tools.get_file_content import get_file_content, schema_get_file_content
 from tools.run_python_file import schema_run_python_file, run_python_file
 from tools.write_file import schema_write_file, write_file
+from tools.delete_file import schema_delete_file, delete_file
 
 from collections.abc import Callable
 
 available_functions = types.Tool(
     function_declarations=[
-        schema_get_files_info, schema_get_file_content, schema_run_python_file, schema_write_file],
+        schema_get_files_info, schema_get_file_content, schema_run_python_file, schema_write_file, schema_delete_file],
 )
 
 function_map: dict[str, Callable[..., str]] = {
     "get_file_content": get_file_content,
     "write_file": write_file,
     "get_files_info": get_files_info,
-    "run_python_file": run_python_file
+    "run_python_file": run_python_file,
+    "delete_file": delete_file,
 }
 
 
