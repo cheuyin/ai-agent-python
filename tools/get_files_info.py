@@ -31,7 +31,9 @@ def get_files_info(working_directory, directory="."):
 
         result_str = ""
 
-        for item in os.listdir(target_dir):
+        for item in sorted(os.listdir(target_dir)):
+            if item.startswith("."):
+                continue
             item_path = os.path.join(target_dir, item)
             size_str = f"{str(os.path.getsize(item_path))} bytes"
             is_dir = os.path.isdir(item_path)
