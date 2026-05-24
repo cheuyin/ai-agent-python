@@ -21,7 +21,7 @@ uv run main.py "your prompt here"
 uv run main.py "your prompt here" --verbose
 ```
 
-The agent operates on the `./calculator` directory by default (configured in `config.py`).
+The agent operates on the `./sandbox/` directory by default (configured in `config.py`).
 
 ## Tools
 
@@ -30,3 +30,4 @@ The agent can:
 - Read file contents
 - Write files
 - Execute Python files
+- Delete files and directories
