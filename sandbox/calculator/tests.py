@@ -32,6 +32,12 @@ class TestCalculator(unittest.TestCase):
         result = self.calculator.evaluate("2 * 3 - 8 / 2 + 5")
         self.assertEqual(result, 7)
 
+    def test_parentheses(self):
+        result = self.calculator.evaluate("( 1 + 2 ) * 3")
+        self.assertEqual(result, 9)
+        result2 = self.calculator.evaluate("10 / ( 2 + 3 )")
+        self.assertEqual(result2, 2)
+
     def test_empty_expression(self):
         result = self.calculator.evaluate("")
         self.assertIsNone(result)
