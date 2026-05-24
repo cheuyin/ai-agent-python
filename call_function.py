@@ -46,7 +46,10 @@ def call_function(function_call: types.FunctionCall, verbose: bool = False) -> t
     args = dict(function_call.args) if function_call.args else {}
     args["working_directory"] = WORKING_DIR
 
-    function_result = function_map[function_name](**args)
+    try:
+        function_result = function_map[function_name](**args)
+    except Exception as e:
+        function_result = f"Error: {e}"
 
     return types.Content(
         role="tool",

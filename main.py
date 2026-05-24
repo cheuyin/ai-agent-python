@@ -45,7 +45,8 @@ def run_agent_turn(messages: list, client, verbose: bool) -> None:
                 or not result.parts[0].function_response
                 or not result.parts[0].function_response.response
             ):
-                raise RuntimeError(f"Empty function response for {fc.name}")
+                print(f"Warning: empty function response for {fc.name}, skipping")
+                continue
 
             function_responses.append(result.parts[0])
 
