@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -9,15 +10,27 @@ from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL
 
 def run_agent_turn(messages: list, client, verbose: bool) -> None:
     for _ in range(MAX_ITERS):
-        res = client.models.generate_content(
-            model=MODEL,
-            contents=messages,
-            config=types.GenerateContentConfig(
-                tools=[available_functions],
-                system_instruction=SYSTEM_PROMPT,
-                thinking_config=types.ThinkingConfig(thinking_level=THINKING_LEVEL) if THINKING_LEVEL else None,
-            )
-        )
+        for attempt in range(3):
+            try:
+                res = client.models.generate_content(
+                    model=MODEL,
+                    contents=messages,
+                    config=types.GenerateContentConfig(
+                        tools=[available_functions],
+                        system_instruction=SYSTEM_PROMPT,
+                        thinking_config=types.ThinkingConfig(
+                            thinking_level=THINKING_LEVEL) if THINKING_LEVEL else None,
+                    )
+                )
+                break
+            except Exception as e:
+                if attempt == 2:
+                    raise
+                wait = 2 ** attempt
+                print(f"API error ({e}), retrying in {wait}s...")
+                time.sleep(wait)
+        else:
+            raise RuntimeError("unreachable")
 
         if res.candidates:
             for candidate in res.candidates:
@@ -45,7 +58,8 @@ def run_agent_turn(messages: list, client, verbose: bool) -> None:
                 or not result.parts[0].function_response
                 or not result.parts[0].function_response.response
             ):
-                print(f"Warning: empty function response for {fc.name}, skipping")
+                print(
+                    f"Warning: empty function response for {fc.name}, skipping")
                 continue
 
             function_responses.append(result.parts[0])
@@ -95,7 +109,8 @@ def main():
         if not user_input.strip():
             continue
 
-        messages.append(types.Content(role="user", parts=[types.Part(text=user_input)]))
+        messages.append(types.Content(
+            role="user", parts=[types.Part(text=user_input)]))
         run_agent_turn(messages, client, args.verbose)
 
 
