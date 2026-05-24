@@ -1,10 +1,16 @@
 [project]
 name = "ai-agent-python"
 version = "0.1.0"
-description = "Add your description here"
+description = "A local AI coding agent powered by Google Gemini"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "google-genai==2.3.0",
     "python-dotenv==1.2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
 ]
