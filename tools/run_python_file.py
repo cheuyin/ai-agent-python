@@ -1,6 +1,7 @@
 import os
 import subprocess
 from google.genai import types
+from config import MAX_CHARS
 
 schema_run_python_file = types.FunctionDeclaration(
     name="run_python_file",
@@ -61,7 +62,10 @@ def run_python_file(working_directory, file_path: str, args=None):
         if process.stderr:
             output.append(f"STDERR:\n{process.stderr}")
 
-        return "\n".join(output)
+        result = "\n".join(output)
+        if len(result) > MAX_CHARS:
+            result = result[:MAX_CHARS] + f"\n[...Output truncated at {MAX_CHARS} characters]"
+        return result
 
     except Exception as e:
         return f"Error: executing Python file: {e}"
