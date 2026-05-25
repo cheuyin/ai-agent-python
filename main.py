@@ -6,6 +6,7 @@ from google.genai import types
 import argparse
 from call_function import available_functions, call_function
 from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS
+from session_storage import new_session_id, save_session, load_session, list_sessions
 
 
 def trim_oldest_turn(messages: list) -> None:
@@ -99,9 +100,31 @@ def main():
                         help="Optional initial user prompt")
     parser.add_argument("--verbose", action="store_true",
                         help="Enable verbose output")
+    parser.add_argument("--resume", metavar="SESSION_ID", type=str,
+                        help="Resume a previous session by ID")
+    parser.add_argument("--history", action="store_true",
+                        help="List and pick a previous session to resume")
     args = parser.parse_args()
 
     messages: list = []
+    session_id = new_session_id()
+
+    if args.resume:
+        messages = load_session(args.resume)
+        session_id = args.resume
+        print(f"Resumed session: {session_id} ({len(messages)} messages)")
+    elif args.history:
+        sessions = list_sessions()
+        if not sessions:
+            print("No saved sessions found.")
+        else:
+            for i, s in enumerate(sessions):
+                print(f"  {i + 1}. {s}")
+            choice = input("Pick a session (number): ").strip()
+            session_id = sessions[int(choice) - 1]
+            messages = load_session(session_id)
+            print(f"Resumed session: {session_id} ({len(messages)} messages)")
+
     initial_prompt = args.user_prompt
 
     while True:
@@ -114,9 +137,15 @@ def main():
                 user_input = input("You: ")
             except EOFError:
                 print()
+                if messages:
+                    save_session(messages, session_id)
+                    print(f"Session saved: {session_id}")
                 break
 
         if user_input.strip().lower() in ("exit", "quit"):
+            if messages:
+                save_session(messages, session_id)
+                print(f"Session saved: {session_id}")
             break
         if not user_input.strip():
             continue
