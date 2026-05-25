@@ -5,7 +5,14 @@ from google import genai
 from google.genai import types
 import argparse
 from call_function import available_functions, call_function
-from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL
+from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS
+
+
+def trim_oldest_turn(messages: list) -> None:
+    """Drop the oldest complete turn (user + model/tool messages) from history in place."""
+    user_indices = [i for i, m in enumerate(messages) if m.role == "user"]
+    if len(user_indices) >= 2:
+        del messages[:user_indices[1]]
 
 
 def run_agent_turn(messages: list, client, verbose: bool) -> None:
@@ -43,6 +50,11 @@ def run_agent_turn(messages: list, client, verbose: bool) -> None:
         if verbose:
             print("Prompt tokens:", res.usage_metadata.prompt_token_count)
             print("Response tokens:", res.usage_metadata.candidates_token_count)
+
+        token_count = res.usage_metadata.prompt_token_count or 0
+        if token_count > MAX_CONTEXT_TOKENS:
+            trim_oldest_turn(messages)
+            print(f"Warning: context large ({token_count:,} tokens), trimmed oldest turn from history")
 
         if not res.function_calls:
             print(f"Agent: {res.text}")

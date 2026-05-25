@@ -5,6 +5,7 @@ THINKING_LEVEL = types.ThinkingLevel.MEDIUM
 MAX_CHARS = 10000
 WORKING_DIR = "./sandbox/"
 MAX_ITERS = 20
+MAX_CONTEXT_TOKENS = 500_000
 SYSTEM_PROMPT = """
 You are a helpful AI agent.
 
