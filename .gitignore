@@ -11,3 +11,6 @@ wheels/
 
 # .env
 *.env
+
+# Agent playground (not versioned)
+sandbox/
