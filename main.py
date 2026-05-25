@@ -5,7 +5,7 @@ from google import genai
 from google.genai import types
 import argparse
 from call_function import available_functions, call_function
-from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS
+from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS, MODEL_CONFIGS
 from session_storage import new_session_id, save_session, load_session, list_sessions
 
 
@@ -16,7 +16,11 @@ def trim_oldest_turn(messages: list) -> None:
         del messages[:user_indices[1]]
 
 
-def run_agent_turn(messages: list, client, verbose: bool) -> None:
+def run_agent_turn(messages: list, client, verbose: bool) -> dict:
+    total_input_tokens = 0
+    total_output_tokens = 0
+    last_prompt_token_count = 0
+
     for _ in range(MAX_ITERS):
         for attempt in range(3):
             try:
@@ -48,18 +52,23 @@ def run_agent_turn(messages: list, client, verbose: bool) -> None:
         if res.usage_metadata is None:
             raise RuntimeError("API request failed: invalid response.")
 
-        if verbose:
-            print("Prompt tokens:", res.usage_metadata.prompt_token_count)
-            print("Response tokens:", res.usage_metadata.candidates_token_count)
+        prompt_tokens = res.usage_metadata.prompt_token_count or 0
+        output_tokens = res.usage_metadata.candidates_token_count or 0
+        total_input_tokens += prompt_tokens
+        total_output_tokens += output_tokens
+        last_prompt_token_count = prompt_tokens
 
-        token_count = res.usage_metadata.prompt_token_count or 0
-        if token_count > MAX_CONTEXT_TOKENS:
+        if prompt_tokens > MAX_CONTEXT_TOKENS:
             trim_oldest_turn(messages)
-            print(f"Warning: context large ({token_count:,} tokens), trimmed oldest turn from history")
+            print(f"Warning: context large ({prompt_tokens:,} tokens), trimmed oldest turn from history")
 
         if not res.function_calls:
-            print(f"Agent: {res.text}")
-            return
+            return {
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
+                "prompt_token_count": last_prompt_token_count,
+                "response_text": res.text,
+            }
 
         function_responses: list[types.Part] = []
 
@@ -95,6 +104,10 @@ def main():
 
     client = genai.Client(api_key=api_key)
 
+    if MODEL not in MODEL_CONFIGS:
+        raise RuntimeError(f"Please define input_cost and output_cost for {MODEL} in config.py")
+    model_config = MODEL_CONFIGS[MODEL]
+
     parser = argparse.ArgumentParser(description="Chatbot")
     parser.add_argument("user_prompt", nargs="?", default=None, type=str,
                         help="Optional initial user prompt")
@@ -108,6 +121,8 @@ def main():
 
     messages: list = []
     session_id = new_session_id()
+    total_input_tokens = 0
+    total_output_tokens = 0
 
     if args.resume:
         messages = load_session(args.resume)
@@ -152,7 +167,19 @@ def main():
 
         messages.append(types.Content(
             role="user", parts=[types.Part(text=user_input)]))
-        run_agent_turn(messages, client, args.verbose)
+        result = run_agent_turn(messages, client, args.verbose)
+
+        total_input_tokens += result["input_tokens"]
+        total_output_tokens += result["output_tokens"]
+        total_cost = (
+            total_input_tokens / 1_000_000 * model_config["input_cost_per_million"]
+            + total_output_tokens / 1_000_000 * model_config["output_cost_per_million"]
+        )
+
+        print(f"\nModel: {MODEL}")
+        print(f"Context: {result['prompt_token_count']:,} / {model_config['input_token_limit']:,} tokens")
+        print(f"Cost so far: ${total_cost:.6f}")
+        print(f"\nAgent: {result['response_text']}")
 
 
 if __name__ == "__main__":
