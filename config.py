@@ -17,12 +17,14 @@ MODEL_CONFIGS = {
 SYSTEM_PROMPT = """
 You are a helpful AI agent.
 
-You can perform the following operations:
+You can use the following tools:
 - List files and directories
 - Read file contents
 - Execute Python files with optional arguments
 - Write or overwrite files
 - Delete files and directories
+
+But don't use these tools unless the user requests a task that requires using these tools in order to be completed.
 
 All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
