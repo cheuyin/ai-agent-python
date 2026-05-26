@@ -1,5 +1,7 @@
 import os
+import sys
 import time
+from typing import NoReturn
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -10,6 +12,7 @@ from session_storage import new_session_id, save_session, load_session, list_ses
 from render import (
     console,
     print_banner,
+    print_farewell,
     get_user_input,
     print_agent_response,
     print_tool_call,
@@ -17,6 +20,15 @@ from render import (
     print_warning,
     print_error,
 )
+
+
+def handle_exit(messages: list, session_id: str) -> NoReturn:
+    if messages:
+        save_session(messages, session_id)
+        print_farewell(session_id)
+    else:
+        print_farewell()
+    sys.exit(0)
 
 
 def trim_oldest_turn(messages: list) -> None:
@@ -70,7 +82,8 @@ def run_agent_turn(messages: list, client) -> dict:
 
         if prompt_tokens > MAX_CONTEXT_TOKENS:
             trim_oldest_turn(messages)
-            print_warning(f"Context large ({prompt_tokens:,} tokens), trimmed oldest turn from history.")
+            print_warning(
+                f"Context large ({prompt_tokens:,} tokens), trimmed oldest turn from history.")
 
         if not res.function_calls:
             return {
@@ -90,13 +103,15 @@ def run_agent_turn(messages: list, client) -> dict:
                 or not result.parts[0].function_response
                 or not result.parts[0].function_response.response
             ):
-                print_warning(f"Empty function response for {fc.name}, skipping.")
+                print_warning(
+                    f"Empty function response for {fc.name}, skipping.")
                 continue
 
             function_responses.append(result.parts[0])
 
             response_val = result.parts[0].function_response.response
-            result_text = str(response_val.get("result", response_val.get("error", "")))
+            result_text = str(response_val.get(
+                "result", response_val.get("error", "")))
             args_display = dict(fc.args) if fc.args else {}
             print_tool_call(fc.name, args_display, result_text)
 
@@ -117,7 +132,8 @@ def main():
     client = genai.Client(api_key=api_key)
 
     if MODEL not in MODEL_CONFIGS:
-        print_error(f"Please define input_cost and output_cost for {MODEL} in config.py")
+        print_error(
+            f"Please define input_cost and output_cost for {MODEL} in config.py")
         raise SystemExit(1)
     model_config = MODEL_CONFIGS[MODEL]
 
@@ -140,7 +156,8 @@ def main():
     if args.resume:
         messages = load_session(args.resume)
         session_id = args.resume
-        console.print(f"[dim]Resumed session:[/] {session_id}  [dim]({len(messages)} messages)[/]\n")
+        console.print(
+            f"[dim]Resumed session:[/] {session_id}  [dim]({len(messages)} messages)[/]\n")
     elif args.history:
         sessions = list_sessions()
         if not sessions:
@@ -151,53 +168,52 @@ def main():
             choice = console.input("\nPick a session (number): ").strip()
             session_id = sessions[int(choice) - 1]
             messages = load_session(session_id)
-            console.print(f"[dim]Resumed session:[/] {session_id}  [dim]({len(messages)} messages)[/]\n")
+            console.print(
+                f"[dim]Resumed session:[/] {session_id}  [dim]({len(messages)} messages)[/]\n")
 
     initial_prompt = args.user_prompt
 
-    while True:
-        if initial_prompt is not None:
-            user_input = initial_prompt
-            initial_prompt = None
-            console.print(
-                f"\n[bold bright_cyan]❯[/] {user_input}"
+    try:
+        while True:
+            if initial_prompt is not None:
+                user_input = initial_prompt
+                initial_prompt = None
+                console.print(f"\n[bold bright_cyan]❯[/] {user_input}")
+            else:
+                try:
+                    user_input = get_user_input()
+                except EOFError:
+                    console.print()
+                    handle_exit(messages, session_id)
+
+            if user_input.strip().lower() in ("exit", "quit"):
+                handle_exit(messages, session_id)
+            if not user_input.strip():
+                continue
+
+            messages.append(types.Content(
+                role="user", parts=[types.Part(text=user_input)]))
+            result = run_agent_turn(messages, client)
+
+            total_input_tokens += result["input_tokens"]
+            total_output_tokens += result["output_tokens"]
+            total_cost = (
+                total_input_tokens / 1_000_000 *
+                model_config["input_cost_per_million"]
+                + total_output_tokens / 1_000_000 *
+                model_config["output_cost_per_million"]
             )
-        else:
-            try:
-                user_input = get_user_input()
-            except EOFError:
-                console.print()
-                if messages:
-                    save_session(messages, session_id)
-                    console.print(f"[dim]Session saved:[/] {session_id}")
-                break
 
-        if user_input.strip().lower() in ("exit", "quit"):
-            if messages:
-                save_session(messages, session_id)
-                console.print(f"[dim]Session saved:[/] {session_id}")
-            break
-        if not user_input.strip():
-            continue
-
-        messages.append(types.Content(
-            role="user", parts=[types.Part(text=user_input)]))
-        result = run_agent_turn(messages, client)
-
-        total_input_tokens += result["input_tokens"]
-        total_output_tokens += result["output_tokens"]
-        total_cost = (
-            total_input_tokens / 1_000_000 * model_config["input_cost_per_million"]
-            + total_output_tokens / 1_000_000 * model_config["output_cost_per_million"]
-        )
-
-        print_agent_response(result["response_text"])
-        print_stats({
-            "model": MODEL,
-            "prompt_tokens": result["prompt_token_count"],
-            "token_limit": model_config["input_token_limit"],
-            "total_cost": total_cost,
-        })
+            print_agent_response(result["response_text"])
+            print_stats({
+                "model": MODEL,
+                "prompt_tokens": result["prompt_token_count"],
+                "token_limit": model_config["input_token_limit"],
+                "total_cost": total_cost,
+            })
+    except KeyboardInterrupt:
+        console.print()
+        handle_exit(messages, session_id)
 
 
 if __name__ == "__main__":

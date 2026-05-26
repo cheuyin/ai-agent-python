@@ -11,10 +11,13 @@ def print_banner():
     console.print()
     console.print(
         Panel(
-            "[bold bright_cyan]AI Agent[/]  [dim]powered by Google Gemini[/]",
+            "[bold bright_cyan]AI Agent[/]  [dim]powered by Google Gemini[/]\n\n"
+            "[white]A general agent that can read/write files and run Python scripts.\n"
+            "Chat with it about life, history, code, and anything in between.[/]\n\n"
+            "[dim]Type [/][bright_cyan]exit[/][dim], [/][bright_cyan]quit[/][dim], or [/][bright_cyan]Ctrl+C[/][dim] to exit.[/]",
             box=rich_box.ROUNDED,
             border_style="bright_cyan",
-            padding=(0, 2),
+            padding=(1, 2),
         )
     )
     console.print()
@@ -79,6 +82,12 @@ def print_stats(stats: dict):
             padding=(0, 1),
         )
     )
+
+
+def print_farewell(session_id: str | None = None):
+    if session_id:
+        console.print(f"\n[dim]Session saved:[/] {session_id}")
+    console.print("[dim]Goodbye! 👋[/]\n")
 
 
 def print_warning(text: str):
