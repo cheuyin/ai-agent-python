@@ -7,6 +7,16 @@ import argparse
 from call_function import available_functions, call_function
 from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS, MODEL_CONFIGS
 from session_storage import new_session_id, save_session, load_session, list_sessions
+from render import (
+    console,
+    print_banner,
+    get_user_input,
+    print_agent_response,
+    print_tool_call,
+    print_stats,
+    print_warning,
+    print_error,
+)
 
 
 def trim_oldest_turn(messages: list) -> None:
@@ -16,7 +26,7 @@ def trim_oldest_turn(messages: list) -> None:
         del messages[:user_indices[1]]
 
 
-def run_agent_turn(messages: list, client, verbose: bool) -> dict:
+def run_agent_turn(messages: list, client) -> dict:
     total_input_tokens = 0
     total_output_tokens = 0
     last_prompt_token_count = 0
@@ -39,7 +49,7 @@ def run_agent_turn(messages: list, client, verbose: bool) -> dict:
                 if attempt == 2:
                     raise
                 wait = 2 ** attempt
-                print(f"API error ({e}), retrying in {wait}s...")
+                print_warning(f"API error ({e}), retrying in {wait}s…")
                 time.sleep(wait)
         else:
             raise RuntimeError("unreachable")
@@ -60,7 +70,7 @@ def run_agent_turn(messages: list, client, verbose: bool) -> dict:
 
         if prompt_tokens > MAX_CONTEXT_TOKENS:
             trim_oldest_turn(messages)
-            print(f"Warning: context large ({prompt_tokens:,} tokens), trimmed oldest turn from history")
+            print_warning(f"Context large ({prompt_tokens:,} tokens), trimmed oldest turn from history.")
 
         if not res.function_calls:
             return {
@@ -73,25 +83,26 @@ def run_agent_turn(messages: list, client, verbose: bool) -> dict:
         function_responses: list[types.Part] = []
 
         for fc in res.function_calls:
-            result = call_function(fc, verbose)
+            result = call_function(fc)
 
             if (
                 not result.parts
                 or not result.parts[0].function_response
                 or not result.parts[0].function_response.response
             ):
-                print(
-                    f"Warning: empty function response for {fc.name}, skipping")
+                print_warning(f"Empty function response for {fc.name}, skipping.")
                 continue
 
             function_responses.append(result.parts[0])
 
-            if verbose:
-                print(f"-> {result.parts[0].function_response.response}")
+            response_val = result.parts[0].function_response.response
+            result_text = str(response_val.get("result", response_val.get("error", "")))
+            args_display = dict(fc.args) if fc.args else {}
+            print_tool_call(fc.name, args_display, result_text)
 
         messages.append(types.Content(role="tool", parts=function_responses))
     else:
-        print("Maximum number of back-and-forths reached. Exiting program.")
+        print_error("Maximum number of back-and-forths reached.")
         raise SystemExit(1)
 
 
@@ -100,19 +111,19 @@ def main():
     api_key = os.environ.get("GEMINI_API_KEY")
 
     if api_key is None:
-        raise RuntimeError("API key is invalid.")
+        print_error("GEMINI_API_KEY is not set.")
+        raise SystemExit(1)
 
     client = genai.Client(api_key=api_key)
 
     if MODEL not in MODEL_CONFIGS:
-        raise RuntimeError(f"Please define input_cost and output_cost for {MODEL} in config.py")
+        print_error(f"Please define input_cost and output_cost for {MODEL} in config.py")
+        raise SystemExit(1)
     model_config = MODEL_CONFIGS[MODEL]
 
-    parser = argparse.ArgumentParser(description="Chatbot")
+    parser = argparse.ArgumentParser(description="AI Agent")
     parser.add_argument("user_prompt", nargs="?", default=None, type=str,
                         help="Optional initial user prompt")
-    parser.add_argument("--verbose", action="store_true",
-                        help="Enable verbose output")
     parser.add_argument("--resume", metavar="SESSION_ID", type=str,
                         help="Resume a previous session by ID")
     parser.add_argument("--history", action="store_true",
@@ -124,21 +135,23 @@ def main():
     total_input_tokens = 0
     total_output_tokens = 0
 
+    print_banner()
+
     if args.resume:
         messages = load_session(args.resume)
         session_id = args.resume
-        print(f"Resumed session: {session_id} ({len(messages)} messages)")
+        console.print(f"[dim]Resumed session:[/] {session_id}  [dim]({len(messages)} messages)[/]\n")
     elif args.history:
         sessions = list_sessions()
         if not sessions:
-            print("No saved sessions found.")
+            console.print("[dim]No saved sessions found.[/]")
         else:
             for i, s in enumerate(sessions):
-                print(f"  {i + 1}. {s}")
-            choice = input("Pick a session (number): ").strip()
+                console.print(f"  [dim]{i + 1}.[/] {s}")
+            choice = console.input("\nPick a session (number): ").strip()
             session_id = sessions[int(choice) - 1]
             messages = load_session(session_id)
-            print(f"Resumed session: {session_id} ({len(messages)} messages)")
+            console.print(f"[dim]Resumed session:[/] {session_id}  [dim]({len(messages)} messages)[/]\n")
 
     initial_prompt = args.user_prompt
 
@@ -146,28 +159,30 @@ def main():
         if initial_prompt is not None:
             user_input = initial_prompt
             initial_prompt = None
-            print(f"You: {user_input}")
+            console.print(
+                f"\n[bold bright_cyan]❯[/] {user_input}"
+            )
         else:
             try:
-                user_input = input("You: ")
+                user_input = get_user_input()
             except EOFError:
-                print()
+                console.print()
                 if messages:
                     save_session(messages, session_id)
-                    print(f"Session saved: {session_id}")
+                    console.print(f"[dim]Session saved:[/] {session_id}")
                 break
 
         if user_input.strip().lower() in ("exit", "quit"):
             if messages:
                 save_session(messages, session_id)
-                print(f"Session saved: {session_id}")
+                console.print(f"[dim]Session saved:[/] {session_id}")
             break
         if not user_input.strip():
             continue
 
         messages.append(types.Content(
             role="user", parts=[types.Part(text=user_input)]))
-        result = run_agent_turn(messages, client, args.verbose)
+        result = run_agent_turn(messages, client)
 
         total_input_tokens += result["input_tokens"]
         total_output_tokens += result["output_tokens"]
@@ -176,10 +191,13 @@ def main():
             + total_output_tokens / 1_000_000 * model_config["output_cost_per_million"]
         )
 
-        print(f"\nModel: {MODEL}")
-        print(f"Context: {result['prompt_token_count']:,} / {model_config['input_token_limit']:,} tokens")
-        print(f"Cost so far: ${total_cost:.6f}")
-        print(f"\nAgent: {result['response_text']}")
+        print_agent_response(result["response_text"])
+        print_stats({
+            "model": MODEL,
+            "prompt_tokens": result["prompt_token_count"],
+            "token_limit": model_config["input_token_limit"],
+            "total_cost": total_cost,
+        })
 
 
 if __name__ == "__main__":
