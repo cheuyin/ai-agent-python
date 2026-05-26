@@ -1,3 +1,4 @@
+import sys
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -20,8 +21,12 @@ def print_banner():
 
 
 def get_user_input() -> str:
-    text = console.input("\n[bold bright_cyan]❯[/] ")
+    console.print()
+    text = console.input("[bold bright_cyan]❯[/] ")
     if text.strip():
+        # Erase the ❯ input line, replace it with the panel
+        sys.stdout.write("\033[F\033[2K")
+        sys.stdout.flush()
         console.print(
             Panel(
                 text,
@@ -50,7 +55,8 @@ def print_tool_call(name: str, args: dict, result: str):
 
     args_str = ", ".join(f"{k}={fmt_val(repr(v))}" for k, v in args.items())
     result_preview = result.replace("\n", " ")
-    result_preview = result_preview[:100] + "…" if len(result_preview) > 100 else result_preview
+    result_preview = result_preview[:100] + \
+        "…" if len(result_preview) > 100 else result_preview
     console.print(f"  [dim]· {name}({args_str}) → {result_preview}[/dim]")
 
 
