@@ -7,7 +7,7 @@ from google import genai
 from google.genai import types
 import argparse
 from call_function import available_functions, call_function
-from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS, MODEL_CONFIGS
+from config import MAX_ITERS, SYSTEM_PROMPT, MODEL, THINKING_LEVEL, MAX_CONTEXT_TOKENS, MODEL_CONFIGS, WORKING_DIR
 from session_storage import new_session_id, save_session, load_session, list_sessions
 from render import (
     console,
@@ -130,6 +130,8 @@ def main():
         raise SystemExit(1)
 
     client = genai.Client(api_key=api_key)
+
+    os.makedirs(WORKING_DIR, exist_ok=True)
 
     if MODEL not in MODEL_CONFIGS:
         print_error(
