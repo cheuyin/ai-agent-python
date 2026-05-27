@@ -1,6 +1,6 @@
 # Local AI Coding Agent
 
-A terminal-based AI coding agent powered by the Google Gemini API. Operates autonomously across multi-step tool-call loops — reading, writing, and executing files within a sandboxed working directory — until a task is fully resolved.
+A terminal-based AI coding agent powered by the Google Gemini API. Give it a task and it figures out the steps, reading, writing, and executing files in a sandboxed working directory until it's done.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-API-4285F4?logo=google&logoColor=white)
@@ -15,7 +15,7 @@ A terminal-based AI coding agent powered by the Google Gemini API. Operates auto
 
 ## How It Works
 
-The agent runs a multi-round inference loop: each model response is inspected for tool calls, the tools are executed, and results are fed back into the context — repeating until the model produces a final text response with no pending tool calls. This is the core pattern behind production AI agents.
+The agent runs a multi-round inference loop. Each model response is inspected for tool calls, the tools are executed, and results are fed back into the context. This repeats until the model produces a final text response with no pending tool calls.
 
 ```
 User prompt
@@ -37,12 +37,12 @@ Rendered response + token/cost stats
 
 ## Key Features
 
-- **Autonomous agentic loop** — dispatches tool calls across up to 20 iterative model rounds per turn without human intervention
-- **Context window management** — tracks prompt token counts each round; trims the oldest conversation turn when approaching the 1M-token limit, enabling indefinitely long sessions
-- **Sandboxed execution** — all file paths validated via `os.path.commonpath` before execution; any path escaping the working directory is rejected
-- **Session persistence** — full conversation histories (including tool call/response pairs) serialized to JSON and deserialized back to typed SDK objects; sessions are resumable across processes
-- **Resilience** — 3-attempt exponential backoff retry on transient API failures
-- **Cost tracking** — input/output tokens accumulated across all loop iterations and converted to a running dollar cost, displayed after every response
+- **Autonomous agentic loop**: dispatches tool calls across up to 20 iterative model rounds per turn without human intervention
+- **Context window management**: tracks prompt token counts each round and trims the oldest conversation turn when approaching the 1M-token limit, enabling indefinitely long sessions
+- **Sandboxed execution**: all file paths validated via `os.path.commonpath` before execution; any path escaping the working directory is rejected
+- **Session persistence**: full conversation histories (including tool call/response pairs) serialized to JSON and deserialized back to typed SDK objects; sessions are resumable across processes
+- **Resilience**: 3-attempt exponential backoff retry on transient API failures
+- **Cost tracking**: input/output tokens accumulated across all loop iterations and converted to a running dollar cost, displayed after every response
 
 ---
 
