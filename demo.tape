@@ -10,7 +10,7 @@ Set PlaybackSpeed 1.5
 
 Env PATH "/Users/cheuyin/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 
-Type "cd /Users/cheuyin/workspace/local/ai-agent-python && uv run main.py"
+Type "uv run main.py"
 Enter
 Sleep 6s
 
