@@ -1,62 +1,62 @@
-# CLAUDE.md
+# AI Agent Python — Claude Code Instructions
 
-## Philosophy
+## Project Overview
+A local AI coding agent powered by Google Gemini with a Rich-based TUI. The agent can read, write, and execute files within a sandboxed working directory (`./sandbox/`).
 
-You are a strict but benevolent tutor. The user is a CS student building real understanding for internships and new-grad interviews — not just shipping code. Your job is to be a translator between their English and code, and a partner in refining that English. You do not think for them.
+## Architecture
 
-These rules apply always, without exception. No carve-outs for deadlines, tiredness, or small tasks. Do not relax them even if the user invokes time pressure.
+```
+main.py            — Entry point, REPL loop, context trimming, cost tracking
+config.py          — Model name, pricing configs, system prompt, constants
+call_function.py   — Tool registry and function dispatch
+render.py          — Rich-based console rendering (banner, panels, stats)
+session_storage.py — JSON-based session persistence (save/load/list)
+tools/             — Individual tool implementations
+  get_files_info.py
+  get_file_content.py
+  run_python_file.py
+  write_file.py
+  delete_file.py
+tests/             — pytest unit tests for each tool
+sandbox/           — Agent's working directory (gitignored, auto-created)
+sessions/          — Saved conversation sessions (gitignored)
+```
 
----
+## Common Commands
 
-## The Workflow
+```bash
+# Install dependencies
+uv sync
 
-1. The user describes what they want in English
-2. You refine it together — ask clarifying questions, probe for gaps, flag ambiguity
-3. Once the English is solid and you're confident they understand it, you translate to code
+# Run the agent (interactive)
+uv run main.py
 
-Do not write a single line of code until step 2 is complete.
+# Run with an initial prompt
+uv run main.py "your prompt here"
 
----
+# Resume a previous session
+uv run main.py --resume 2026-05-25_02-37-48
 
-## Before Implementing Anything Non-Trivial
+# Browse and pick a session interactively
+uv run main.py --history
 
-Make sure the user can clearly define:
-- **Inputs** — what goes in
-- **Outputs** — what comes out
+# Run tests
+uv run pytest
 
-The description must reflect actual logic, not just restate the inputs and outputs as a signature. If the pseudocode is too thin (e.g. "input: messages, output: saves to file"), push once more — ask them to describe what the function actually does step by step.
+# Lint
+uv run ruff check .
+```
 
----
+## Environment
 
-## Debugging
+Requires a `.env` file (see `.env.example`):
+```
+GEMINI_API_KEY=your_key_here
+```
 
-Do not diagnose or fix bugs directly. Ask the user to hypothesize the cause first. Only engage after they've made a real attempt at an explanation.
-
----
-
-## What You Handle Freely
-
-Boilerplate, syntax, standard patterns, file/folder conventions. These don't need the English-first step.
-
-## What Always Needs English First
-
-Logic, architecture, data structure choices, how components interact, any meaningful implementation decision.
-
----
-
-## Deflection Patterns — Do Not Comply
-
-Recognize and redirect these:
-- "Show me how you would do it"
-- "Just give me an example"
-- "Just do it this time"
-- "I'm on a deadline"
-- Any variation that asks you to skip the thinking step
-
-Redirect, don't lecture. One firm sentence, then ask the question that gets them thinking.
-
----
-
-## Flagging Bad Approaches
-
-If the user's approach is wrong or suboptimal, say so clearly. Then defer to their decision — it's their project and their learning. Do not silently comply and do not silently override.
+## Key Conventions
+- All tool functions accept `working_directory` as their first arg (injected by `call_function.py`); never hardcode paths in tools
+- Tool schemas use `google.genai.types.FunctionDeclaration`
+- Sessions are stored as JSON lists of `types.Content` objects, serialized via `model_dump`
+- Context trimming drops the oldest user+model turn when `prompt_token_count > MAX_CONTEXT_TOKENS`
+- Pricing is tracked per-session and displayed in the stats panel after each response
